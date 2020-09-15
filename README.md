@@ -1,78 +1,56 @@
-<p align="center"><img src="https://res.cloudinary.com/dtfbvvkyp/image/upload/v1566331377/laravel-logolockup-cmyk-red.svg" width="400"></p>
+# 構築ログ
+```
+# composer create-project --prefer-dist laravel/laravel auth "6.*"
+# composer require laravel/ui --dev 1.*
+# npm install && npm run dev
+# composer require tymon/jwt-auth
+# php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
+# php artisan jwt:secret
+# php artisan make:seeder UsersTableSeeder
+# php artisan migrate
+```
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/license.svg" alt="License"></a>
-</p>
+# JWT
+- 認証つきAPI要求時は Authorization ヘッダにアクセストークンを付与する。
+```
+-H "Authorization: Bearer (トークン)
+```
 
-## About Laravel
+デフォルトの有効期限は発行から1時間、リフレッシュ有効期限は発行から2週間(この期限内であれば無効になったトークンを使って新しいトークンを取得することができる)。有効期限を変更する場合は以下の設定を .env に追記する。
+| 設定 | デフォルト値 | 説明 |
+| :--: | :--: | :--: |
+| JWT_TTL | 60 (1時間) | トークンの有効期限 (分) |
+| JWT_REFRESH_TTL | 20160 (2週間) | トークンのリフレッシュ有効期限 (分) |
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+リフレッシュをおこなうとすぐに古いトークンは使えなくなる。リフレッシュと並列に古いトークンでアクセスをおこなうと更新直後に認証が通らなくなってしまう。古いトークンをすぐに失効させたくない場合は、猶予期間を .env に設定する。
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| 設定 | デフォルト値 | 説明 |
+| :--: | :--: | :--: |
+| JWT_BLACKLIST_GRACE_PERIOD | 0 (無効) | ブラックリスト猶予期間 (秒) |
 
-## Learning Laravel
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## ログイン
+- レスポンスで返ってきたaccess_tokenを今後のapiで常にリクエストに含める
+```
+# curl -H "Accept: application/json" -XPOST -d 'email=test@test.com&password=testtest' https://auth.localhost/api/login 
+{"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hdXRoLmxvY2FsaG9zdFwvYXBpXC9sb2dpbiIsImlhdCI6MTYwMDE3NTM1OCwiZXhwIjoxNjAwMTc4OTU4LCJuYmYiOjE2MDAxNzUzNTgsImp0aSI6ImxRdk1SekhKaFdQb3hOMnAiLCJzdWIiOjEsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjcifQ.l_CH8ijCI8JWK8wqYF2CJ6RsyLm32NanFnkB0J-pRfY","token_type":"bearer","expires_in":3600}
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## アクセストークンをリクエストに含めて送信する
+```
+# curl -X GET -H "Accept: application/json" -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hdXRoLmxvY2FsaG9zdFwvYXBpXC9sb2dpbiIsImlhdCI6MTYwMDE3NTM1OCwiZXhwIjoxNjAwMTc4OTU4LCJuYmYiOjE2MDAxNzUzNTgsImp0aSI6ImxRdk1SekhKaFdQb3hOMnAiLCJzdWIiOjEsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjcifQ.l_CH8ijCI8JWK8wqYF2CJ6RsyLm32NanFnkB0J-pRfY" https://auth.localhost/api/user
+{"id":1,"name":"test","email":"test@test.com","email_verified_at":null,"created_at":null,"updated_at":null}
+```
 
-## Laravel Sponsors
+## アクセストークンの更新
+```
+# curl -X GET -H "Accept: application/json" -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hdXRoLmxvY2FsaG9zdFwvYXBpXC9sb2dpbiIsImlhdCI6MTYwMDE3NTM1OCwiZXhwIjoxNjAwMTc4OTU4LCJuYmYiOjE2MDAxNzUzNTgsImp0aSI6ImxRdk1SekhKaFdQb3hOMnAiLCJzdWIiOjEsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjcifQ.l_CH8ijCI8JWK8wqYF2CJ6RsyLm32NanFnkB0J-pRfY" https://auth.localhost/api/refresh
+{"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hdXRoLmxvY2FsaG9zdFwvYXBpXC9yZWZyZXNoIiwiaWF0IjoxNjAwMTc1MzU4LCJleHAiOjE2MDAxNzkwMTgsIm5iZiI6MTYwMDE3NTQxOCwianRpIjoiUFp2cktWU3JWanU2NURNeSIsInN1YiI6MSwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyJ9.jZybQbQWDLGdHpk1iPusrXwE1GrDI-Ry08kqMlN3h0o","token_type":"bearer","expires_in":3600}
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[British Software Development](https://www.britishsoftware.co)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- [UserInsights](https://userinsights.com)
-- [Fragrantica](https://www.fragrantica.com)
-- [SOFTonSOFA](https://softonsofa.com/)
-- [User10](https://user10.com)
-- [Soumettre.fr](https://soumettre.fr/)
-- [CodeBrisk](https://codebrisk.com)
-- [1Forge](https://1forge.com)
-- [TECPRESSO](https://tecpresso.co.jp/)
-- [Runtime Converter](http://runtimeconverter.com/)
-- [WebL'Agence](https://weblagence.com/)
-- [Invoice Ninja](https://www.invoiceninja.com)
-- [iMi digital](https://www.imi-digital.de/)
-- [Earthlink](https://www.earthlink.ro/)
-- [Steadfast Collective](https://steadfastcollective.com/)
-- [We Are The Robots Inc.](https://watr.mx/)
-- [Understand.io](https://www.understand.io/)
-- [Abdel Elrafa](https://abdelelrafa.com)
-- [Hyper Host](https://hyper.host)
-- [Appoly](https://www.appoly.co.uk)
-- [OP.GG](https://op.gg)
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## ログアウト
+```
+# curl -X POST -H "Accept: application/json" -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9hdXRoLmxvY2FsaG9zdFwvYXBpXC9yZWZyZXNoIiwiaWF0IjoxNjAwMTc1MzU4LCJleHAiOjE2MDAxNzkwMTgsIm5iZiI6MTYwMDE3NTQxOCwianRpIjoiUFp2cktWU3JWanU2NURNeSIsInN1YiI6MSwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyJ9.jZybQbQWDLGdHpk1iPusrXwE1GrDI-Ry08kqMlN3h0o" https://auth.localhost/api/logout
+{"message":"Successfully logged out"}
+```
